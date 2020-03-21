@@ -344,6 +344,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "alt-core"
+version = "0.1.0"
+
+[[package]]
 name = "alterrain-rs"
 version = "0.1.0"
 dependencies = [
@@ -352,8 +356,10 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "actix-web-actors",
+ "alt-core",
  "env_logger",
  "rand",
+ "serde_json",
 ]
 
 [[package]]
