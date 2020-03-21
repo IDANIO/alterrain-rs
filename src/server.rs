@@ -2,19 +2,22 @@ use actix::prelude::*;
 use rand::{rngs::ThreadRng, Rng};
 use std::collections::HashMap;
 
-/// Chat server sends this messages to session
+/// Game server sends this messages to session
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Message(pub String);
 
-/// New chat session is created
+/// New chat session is created, WsGameSession actor will send this msg to GameServer actor the
+/// msg contains the address of the sender session, so you can store it in the GameServer as
+/// reference.
 #[derive(Message)]
 #[rtype(usize)]
 pub struct Connect {
     pub addr: Recipient<Message>,
 }
 
-/// Session is disconnected
+/// Session is disconnected, WsGameSession sending the unique id to GameServer so that you can
+/// remove it from the list of connected sessions.
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
@@ -62,7 +65,9 @@ impl Handler<Connect> for GameServer {
 impl Handler<Disconnect> for GameServer {
     type Result = ();
 
-    fn handle(&mut self, _: Disconnect, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Disconnect, _: &mut Self::Context) -> Self::Result {
         println!("Someone disconnected");
+
+        self.sessions.remove(&msg.id);
     }
 }

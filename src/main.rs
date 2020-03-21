@@ -21,6 +21,8 @@ async fn game_route(
     )
 }
 
+/// Here we define a websocket game session, each session should have its unique session id, as
+/// well as a pointer to the game server actor. Other information TBD
 struct WsGameSession {
     /// unique session id
     id: usize,
