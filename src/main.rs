@@ -226,12 +226,6 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .data(server.clone())
-            // redirect to websocket.html
-            // .service(web::resource("/").route(web::get().to(|| {
-            //     HttpResponse::Found()
-            //         .header("LOCATION", "/static/index.html")
-            //         .finish()
-            // })))
             // websocket
             .service(web::resource("/ws/").to(chat_route))
             // static resources
