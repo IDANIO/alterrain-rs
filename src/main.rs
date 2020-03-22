@@ -5,6 +5,7 @@ use actix_web_actors::ws;
 
 use serde::{Deserialize, Serialize};
 
+mod codec;
 mod server;
 
 #[derive(Debug, Serialize, Deserialize)]
