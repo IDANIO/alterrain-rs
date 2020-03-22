@@ -1,5 +1,6 @@
 use std::net;
 use std::str::FromStr;
+use std::time::{Duration, Instant};
 
 use actix::prelude::*;
 
@@ -17,6 +18,9 @@ pub struct Message(pub String);
 pub struct DummySession {
     /// unique session id
     id: usize,
+    /// Client must send ping at least once per 10 seconds, otherwise we drop
+    /// connection.
+    hb: Instant,
     /// this is address of server
     addr: Addr<DummyServer>,
 }
@@ -27,6 +31,9 @@ impl Actor for DummySession {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
+        // we'll start heartbeat process on session start.
+        self.hb(ctx);
+
         // register self in chat server. `AsyncContext::wait` register
         // future within context, but context waits until this future resolves
         // before processing any other events.
@@ -64,7 +71,33 @@ impl Handler<Message> for DummySession {
 
 impl DummySession {
     fn new(addr: Addr<DummyServer>) -> Self {
-        DummySession { id: 0, addr }
+        DummySession {
+            id: 0,
+            hb: Instant::now(),
+            addr,
+        }
+    }
+
+    /// helper method that sends ping to client every second.
+    ///
+    /// also this method check heartbeats from client
+    fn hb(&self, ctx: &mut Context<Self>) {
+        ctx.run_interval(Duration::new(1, 0), |act, ctx| {
+            // check client heartbeats
+            if Instant::now().duration_since(act.hb) > Duration::new(10, 0) {
+                // heartbeat timed out
+                println!("Client heartbeat failed, disconnecting!");
+
+                // notify chat server
+                act.addr.do_send(server::Disconnect { id: act.id });
+
+                // stop actor
+                ctx.stop();
+            }
+
+            act.framed.write(ChatResponse::Ping);
+            // if we can not send message to sink, sink is closed (disconnected)
+        });
     }
 }
 
