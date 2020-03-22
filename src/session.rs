@@ -27,7 +27,6 @@ impl Actor for DummySession {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        println!("DummySession::started!!");
         // register self in chat server. `AsyncContext::wait` register
         // future within context, but context waits until this future resolves
         // before processing any other events.
@@ -50,8 +49,7 @@ impl Actor for DummySession {
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
         // TODO: notify chat server
-        // self.addr.do_send(server::Disconnect { id: self.id });
-        println!("DummySession::stopping");
+        self.addr.do_send(server::Disconnect { id: self.id });
         Running::Stop
     }
 }
@@ -89,7 +87,6 @@ pub fn tcp_server(_s: &str, server: Addr<DummyServer>) {
                         // let (r, w) = split(stream);
                         DummySession::new(server)
                     });
-                    println!("ChatSession::create!!!")
                 }
                 Err(_) => return,
             }

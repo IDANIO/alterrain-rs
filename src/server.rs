@@ -44,16 +44,26 @@ impl Handler<Connect> for DummyServer {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        println!("Someone joined");
-
         // TODO: notify all users in same room
         // self.send_message(&"Main".to_owned(), "Someone joined", 0);
 
         let id = self.rng.gen::<usize>();
         self.sessions.insert(id);
 
+        println!("{} joined", id);
+
         // send id back
         id
+    }
+}
+
+/// Handler for Disconnect message.
+impl Handler<Disconnect> for DummyServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) -> Self::Result {
+        println!("{} disconnected", msg.id);
+        self.sessions.remove(&msg.id);
     }
 }
 
