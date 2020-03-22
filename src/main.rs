@@ -3,7 +3,15 @@ use actix_files as fs;
 use actix_web::{middleware, web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 
+use serde::{Deserialize, Serialize};
+
 mod server;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct MyObj {
+    ty: String,
+    date: usize,
+}
 
 /// Entry point for our route
 async fn game_route(
@@ -84,7 +92,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsGameSession {
         println!("WEBSOCKET MESSAGE: {:?}", msg);
         match msg {
             ws::Message::Text(text) => {
-                let _ = text.trim();
+                // You wanna do some Json check here
+                let data = serde_json::from_str::<MyObj>(text.as_str());
+
+                println!("We get {:?}", data);
             }
             ws::Message::Binary(_) => println!("Unexpected binary"),
             ws::Message::Continuation(_) => {
