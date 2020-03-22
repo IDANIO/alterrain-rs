@@ -1,7 +1,25 @@
 use actix::prelude::*;
 
-use rand::{self, rngs::ThreadRng};
+use rand::{self, rngs::ThreadRng, Rng};
 use std::collections::HashSet;
+
+use crate::session;
+
+/// Message for chat server communications
+
+/// New chat session is created
+#[derive(Message)]
+#[rtype(usize)]
+pub struct Connect {
+    pub addr: Recipient<session::Message>,
+}
+
+/// Session is disconnected
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Disconnect {
+    pub id: usize,
+}
 
 /// This is a dummy server for leaning and testing, only holding the connected sessions.
 ///
@@ -16,6 +34,26 @@ impl Default for DummyServer {
             sessions: HashSet::new(),
             rng: rand::thread_rng(),
         }
+    }
+}
+
+/// Handler for Connect message.
+///
+/// Register new session and assign unique id to this session
+impl Handler<Connect> for DummyServer {
+    type Result = usize;
+
+    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
+        println!("Someone joined");
+
+        // TODO: notify all users in same room
+        // self.send_message(&"Main".to_owned(), "Someone joined", 0);
+
+        let id = self.rng.gen::<usize>();
+        self.sessions.insert(id);
+
+        // send id back
+        id
     }
 }
 

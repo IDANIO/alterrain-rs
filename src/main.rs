@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use actix::*;
 use actix_files as fs;
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 
 mod codec;
@@ -28,6 +28,7 @@ mod session;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
     // Start server actor
@@ -42,7 +43,8 @@ async fn main() -> std::io::Result<()> {
     // Create Http server with websocket support
     HttpServer::new(move || {
         App::new()
-            // .data(server.clone())
+            .wrap(Logger::default())
+            .data(server.clone())
             // websocket
             // .service(web::resource("/ws/").to(chat_route))
             // static resources
