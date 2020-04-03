@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use crate::server::Connect;
 use actix::*;
 use actix_files as fs;
 use actix_web::{middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer};
@@ -25,6 +26,49 @@ mod session;
 //         stream,
 //     )
 // }
+
+struct WsDummySession {
+    /// unique session id
+    id: usize,
+    // /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
+    // /// otherwise we drop connection.
+    // hb: Instant,
+    /// Chat server
+    addr: Addr<server::DummyServer>,
+}
+
+impl Actor for WsDummySession {
+    type Context = ws::WebsocketContext<Self>;
+
+    /// Method is called on actor start.
+    fn started(&mut self, ctx: &mut Self::Context) {
+        let addr = ctx.address();
+        addr.send(server::Connect {
+            addr: addr.recipient(),
+        })
+        .into_actor(self)
+        .then(|res, act, ctx| {
+            match res {
+                Ok(res) => act.id = res,
+                // something is wrong with chat server
+                _ => ctx.stop(),
+            }
+        })
+        .wait(ctx)
+    }
+
+    fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
+        unimplemented!()
+    }
+}
+
+impl Handler<session::Message> for WsDummySession {
+    type Result = ();
+
+    fn handle(&mut self, msg: session::Message, ctx: &mut Self::Context) -> Self::Result {
+        unimplemented!()
+    }
+}
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {

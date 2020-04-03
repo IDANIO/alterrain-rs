@@ -82,22 +82,22 @@ impl DummySession {
     ///
     /// also this method check heartbeats from client
     fn hb(&self, ctx: &mut Context<Self>) {
-        ctx.run_interval(Duration::new(1, 0), |act, ctx| {
-            // check client heartbeats
-            if Instant::now().duration_since(act.hb) > Duration::new(10, 0) {
-                // heartbeat timed out
-                println!("Client heartbeat failed, disconnecting!");
-
-                // notify chat server
-                act.addr.do_send(server::Disconnect { id: act.id });
-
-                // stop actor
-                ctx.stop();
-            }
-
-            act.framed.write(ChatResponse::Ping);
-            // if we can not send message to sink, sink is closed (disconnected)
-        });
+        // ctx.run_interval(Duration::new(1, 0), |act, ctx| {
+        //     // check client heartbeats
+        //     if Instant::now().duration_since(act.hb) > Duration::new(10, 0) {
+        //         // heartbeat timed out
+        //         println!("Client heartbeat failed, disconnecting!");
+        //
+        //         // notify chat server
+        //         act.addr.do_send(server::Disconnect { id: act.id });
+        //
+        //         // stop actor
+        //         ctx.stop();
+        //     }
+        //
+        //     act.framed.write(ChatResponse::Ping);
+        //     // if we can not send message to sink, sink is closed (disconnected)
+        // });
     }
 }
 
