@@ -8,6 +8,8 @@ use std::time::{Duration, Instant};
 
 mod server;
 
+type WsResult = Result<ws::Message, ws::ProtocolError>;
+
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
@@ -29,7 +31,8 @@ async fn game_route(
     )
 }
 
-// Define http actor
+/// Define http actor, representing each single websocket session. It should contains information
+/// of the unique id, a time stamp of last active time, and an pointer to the game server actor.
 struct WsSession {
     /// unique session id
     id: usize,
@@ -78,6 +81,8 @@ impl Actor for WsSession {
     }
 }
 
+/// Handle messages from game server, here we should send JSON back to the client.
+/// For alterrain, the JSON should describe the state of the world
 impl Handler<server::Message> for WsSession {
     type Result = ();
 
@@ -86,8 +91,8 @@ impl Handler<server::Message> for WsSession {
     }
 }
 
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+impl StreamHandler<WsResult> for WsSession {
+    fn handle(&mut self, msg: WsResult, ctx: &mut Self::Context) {
         let msg = match msg {
             Err(_) => {
                 ctx.stop();
