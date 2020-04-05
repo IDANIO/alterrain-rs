@@ -1,7 +1,9 @@
 use actix::*;
 use actix_files as fs;
+use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
+
 use std::time::{Duration, Instant};
 
 mod server;
@@ -46,12 +48,41 @@ impl Actor for WsSession {
     fn started(&mut self, ctx: &mut Self::Context) {
         // we'll start heartbeat process on session start.
         self.hb(ctx);
+
+        // register self in chat server. `AsyncContext::wait` register
+        // future within context, but context waits until this future resolves
+        // before processing any other events.
+        // HttpContext::state() is instance of WsChatSessionState, state is shared
+        // across all routes within application
+        let addr = ctx.address();
+        self.addr
+            .send(server::Connect {
+                addr: addr.recipient(),
+            })
+            .into_actor(self)
+            .then(|res, act, ctx| {
+                match res {
+                    Ok(res) => act.id = res,
+                    // something is wrong with chat server
+                    _ => ctx.stop(),
+                }
+                fut::ready(())
+            })
+            .wait(ctx);
     }
 
-    fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
+    fn stopping(&mut self, _: &mut Self::Context) -> Running {
         // notify chat server
-        // self.addr.do_send(server::Disconnect { id: self.id });
+        self.addr.do_send(server::Disconnect { id: self.id });
         Running::Stop
+    }
+}
+
+impl Handler<server::Message> for WsSession {
+    type Result = ();
+
+    fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) -> Self::Result {
+        ctx.text(msg.0);
     }
 }
 
@@ -76,7 +107,7 @@ impl WsSession {
                 println!("Websocket Client heartbeat failed, disconnecting!");
 
                 // notify chat server
-                // act.addr.do_send(server::Disconnect { id: act.id });
+                act.addr.do_send(server::Disconnect { id: act.id });
 
                 // stop actor
                 ctx.stop();
@@ -92,6 +123,7 @@ impl WsSession {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
     // Start chat server actor
