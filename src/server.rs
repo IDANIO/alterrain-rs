@@ -7,6 +7,7 @@ use std::{
 };
 
 use crate::{command, game::GameInstance};
+use std::sync::Mutex;
 // use alt_core::world::World as GameWorld;
 
 /// Chat server sends this messages to session
@@ -66,12 +67,15 @@ impl Actor for GameServer {
     type Context = Context<Self>;
 
     fn started(&mut self, context: &mut Context<Self>) {
-        let mut game = GameInstance::default();
+        let mutex = Mutex::new(GameInstance::default());
 
-        // run the game instance on another thread.
         thread::spawn(move || {
-            game.run();
+            println!("hi");
+
+            mutex.lock().unwrap().run();
         });
+
+        // mutex.lock().unwrap()
     }
 }
 
