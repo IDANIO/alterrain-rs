@@ -6,6 +6,7 @@ use actix_web_actors::ws;
 
 use std::time::{Duration, Instant};
 
+mod command;
 mod server;
 
 type WsResult = Result<ws::Message, ws::ProtocolError>;
