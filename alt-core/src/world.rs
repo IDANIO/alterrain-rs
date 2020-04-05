@@ -25,7 +25,23 @@ impl World {
         }
     }
 
-    pub fn add_player(x: i32, y: i32) -> Option<Box<dyn GameObject>> {
+    pub fn add_player(&mut self, x: usize, y: usize) -> Option<Box<dyn GameObject>> {
+        self.tilemap[x][y];
         None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::world::World;
+
+    #[test]
+    fn test_world() {
+        let mut world = World::new(32, 32);
+        world.add_player(0, 0);
+
+        world.add_player(1, 0);
+
+        world.add_player(999, 999);
     }
 }

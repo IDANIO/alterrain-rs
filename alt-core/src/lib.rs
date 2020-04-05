@@ -1,4 +1,5 @@
 pub mod game_objects;
+pub mod tilemap;
 pub mod world;
 
 #[cfg(test)]
