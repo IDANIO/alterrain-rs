@@ -1,3 +1,4 @@
+pub mod frame_limiter;
 pub mod game_objects;
 pub mod tilemap;
 pub mod timing;

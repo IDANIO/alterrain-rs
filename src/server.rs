@@ -120,9 +120,12 @@ impl Handler<Command> for GameServer {
 }
 
 impl GameServer {
+    /// This part should be equivalent to SetInterval in Node.js, and we use this to tick the game
+    /// at every loop
     fn tick(&mut self, context: &mut Context<Self>) {
         let now = Instant::now();
         println!("dt: {:?}", now.duration_since(self.last_frame));
+
         self.last_frame = now;
     }
 }
