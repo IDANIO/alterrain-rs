@@ -41,6 +41,25 @@ impl Tilemap {
     pub fn get_index(&self, row: u32, col: u32) -> usize {
         (row * self.width + col) as usize
     }
+
+    pub fn get_tile(&self, row: u32, col: u32) -> Option<&Tile> {
+        let index = self.get_index(row, col);
+        self.tiles.get(index)
+    }
+
+    pub fn set_tile(&mut self, row: u32, col: u32, new_tile: Tile) -> bool {
+        let index = self.get_index(row, col);
+        if let Some(tile) = self.tiles.get_mut(index) {
+            *tile = new_tile;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn get_tile_unchecked(&self, row: u32, col: u32) -> &Tile {
+        unsafe { self.tiles.get_unchecked(self.get_index(row, col)) }
+    }
 }
 
 impl std::fmt::Display for Tilemap {
