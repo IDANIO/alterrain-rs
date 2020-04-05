@@ -2,12 +2,12 @@ use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
 use std::{
     collections::HashMap,
+    sync::{Arc, Mutex},
     thread,
     time::{Duration, Instant},
 };
 
 use crate::{command, game::GameInstance};
-use std::sync::Mutex;
 // use alt_core::world::World as GameWorld;
 
 /// Chat server sends this messages to session
@@ -45,9 +45,8 @@ pub struct Command {
 pub struct GameServer {
     /// store a list of connected sessions
     sessions: HashMap<usize, Recipient<Message>>,
-    /// An instance of an alterrain world
-    /// TODO: I am not sure if this is the way to do it
-    // world: GameWorld,
+    /// An instance of the actual game & its logic
+    instance: Arc<Mutex<GameInstance>>,
     /// thread local random number generator
     rng: ThreadRng,
 }
@@ -56,7 +55,7 @@ impl Default for GameServer {
     fn default() -> Self {
         GameServer {
             sessions: HashMap::new(),
-            // world: GameWorld::new(32, 32),
+            instance: Arc::new(Mutex::new(GameInstance::default())),
             rng: rand::thread_rng(),
         }
     }
@@ -66,16 +65,12 @@ impl Default for GameServer {
 impl Actor for GameServer {
     type Context = Context<Self>;
 
-    fn started(&mut self, context: &mut Context<Self>) {
-        let mutex = Mutex::new(GameInstance::default());
-
+    fn started(&mut self, _: &mut Context<Self>) {
+        // Now create a separate thread to run the game logic
+        let instance = self.instance.clone();
         thread::spawn(move || {
-            println!("hi");
-
-            mutex.lock().unwrap().run();
+            instance.lock().unwrap().run();
         });
-
-        // mutex.lock().unwrap()
     }
 }
 
@@ -90,6 +85,9 @@ impl Handler<Connect> for GameServer {
             id,
             self.sessions.len()
         );
+
+        let n = self.instance.lock().unwrap().steps;
+        println!("Current game step is {}", n);
 
         id
     }
