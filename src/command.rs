@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// The enum for all the Commands of a player can pass to the server.
-/// The corresponding JSON format looks like
+/// The corresponding JSON format looks like {"ty":"Move","dat":[1,2]}
 ///
 /// Note, "ty" is short hand for "type" and "dat" => "data"
 #[derive(Serialize, Deserialize)]
