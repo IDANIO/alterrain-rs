@@ -26,7 +26,7 @@ pub fn serialize(cmd: &Command) -> Result<String, Error> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::{deserialize, serialize, Command};
 
     #[test]

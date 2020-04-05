@@ -32,7 +32,7 @@ impl World {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::world::World;
 
     #[test]
