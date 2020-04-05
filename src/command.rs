@@ -16,23 +16,23 @@ pub enum Command {
 }
 
 #[inline]
-pub fn deserialize_command(raw: &str) -> Result<Command, Error> {
+pub fn deserialize(raw: &str) -> Result<Command, Error> {
     serde_json::from_str::<Command>(raw)
 }
 
 #[inline]
-pub fn serialize_command(cmd: &Command) -> Result<String, Error> {
+pub fn serialize(cmd: &Command) -> Result<String, Error> {
     serde_json::to_string(cmd)
 }
 
 #[cfg(test)]
 mod test {
-    use super::{deserialize_command, serialize_command, Command};
+    use super::{deserialize, serialize, Command};
 
     #[test]
     fn test_command_serialize() {
         let raw = "{\"ty\":\"Move\",\"dat\":[1,2]}";
-        match deserialize_command(raw).unwrap() {
+        match deserialize(raw).unwrap() {
             Command::Move(x, y) => assert_eq!([x, y], [1, 2]),
             _ => unreachable!(),
         }
@@ -41,12 +41,9 @@ mod test {
     #[test]
     fn test_command_deserialize() {
         let cmd = Command::Move(1, 2);
-        assert_eq!(
-            serialize_command(&cmd).unwrap(),
-            "{\"ty\":\"Move\",\"dat\":[1,2]}"
-        );
+        assert_eq!(serialize(&cmd).unwrap(), "{\"ty\":\"Move\",\"dat\":[1,2]}");
 
         let cmd = Command::MakeSound;
-        assert_eq!(serialize_command(&cmd).unwrap(), "{\"ty\":\"MakeSound\"}");
+        assert_eq!(serialize(&cmd).unwrap(), "{\"ty\":\"MakeSound\"}");
     }
 }

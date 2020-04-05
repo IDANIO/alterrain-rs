@@ -4,22 +4,28 @@
 //! the world is saved.
 
 use crate::game_objects::GameObject;
-use crate::tilemap::Tilemap;
 
 pub struct World {
     width: usize,
     height: usize,
-    // tilemap: Tilemap,
+    // TODO: use tilemap struct, for right now, assume tilemap is a fixed 2d array.
+    tilemap: [[i32; 32]; 32],
     game_objects: Vec<Box<dyn GameObject>>,
 }
 
+// TODO: Subject to change
 impl World {
-    fn new(width: usize, height: usize) -> Self {
+    /// Constructor
+    pub fn new(width: usize, height: usize) -> Self {
         World {
             width,
             height,
-            // tilemap: Tilemap {},
+            tilemap: [[0; 32]; 32],
             game_objects: vec![],
         }
+    }
+
+    pub fn add_player(x: i32, y: i32) -> Option<Box<dyn GameObject>> {
+        None
     }
 }

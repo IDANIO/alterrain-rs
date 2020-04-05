@@ -1,9 +1,9 @@
 use actix::*;
 use actix_files as fs;
-// use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 
+use crate::command::Command;
 use std::time::{Duration, Instant};
 
 mod command;
@@ -101,7 +101,7 @@ impl StreamHandler<WsResult> for WsSession {
             }
             Ok(msg) => msg,
         };
-        println!("WEBSOCKET MESSAGE: {:?}", msg);
+        println!("WEBSOCKET MESSAGE (id: {:?}): {:?}", self.id, msg);
 
         match msg {
             ws::Message::Ping(msg) => {
@@ -111,9 +111,17 @@ impl StreamHandler<WsResult> for WsSession {
             ws::Message::Pong(_) => {
                 self.hb = Instant::now();
             }
-            ws::Message::Text(text) => {
-                let m = text.trim();
+            ws::Message::Text(raw) => {
                 // Here we should do the JSON command parsing
+                match command::deserialize(raw.as_str()) {
+                    Ok(cmd) => {
+                        // TODO: maybe return some result and wait instead of doing unconditionally?
+                        // For example, if it is a invalid move then return a response that say
+                        // invalid move, so you can play error sound on the client.
+                        self.addr.do_send(server::Command { id: self.id, cmd });
+                    }
+                    _ => println!("Unexpected JSON message"),
+                }
             }
             ws::Message::Binary(_) => println!("Unexpected binary"),
             ws::Message::Close(_) | ws::Message::Continuation(_) => {
