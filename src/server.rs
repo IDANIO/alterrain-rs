@@ -1,6 +1,8 @@
 use actix::prelude::*;
+use actix::utils::IntervalFunc;
 use rand::{self, rngs::ThreadRng, Rng};
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 use crate::command;
 
@@ -45,6 +47,8 @@ pub struct GameServer {
     /// An instance of an alterrain world
     /// TODO: I am not sure if this is the way to do it
     world: GameWorld,
+    /// Time elapsed since the last frame.
+    last_frame: Instant,
     /// thread local random number generator
     rng: ThreadRng,
 }
@@ -54,6 +58,7 @@ impl Default for GameServer {
         GameServer {
             sessions: HashMap::new(),
             world: GameWorld::new(32, 32),
+            last_frame: Instant::now(),
             rng: rand::thread_rng(),
         }
     }
@@ -62,6 +67,14 @@ impl Default for GameServer {
 /// Turn `GameServer` into an actor
 impl Actor for GameServer {
     type Context = Context<Self>;
+
+    fn started(&mut self, context: &mut Context<Self>) {
+        // spawn an interval stream into our context
+        // Say 20 frames per second for now
+        IntervalFunc::new(Duration::from_secs_f64(1.0 / 20.0), Self::tick)
+            .finish()
+            .spawn(context)
+    }
 }
 
 impl Handler<Connect> for GameServer {
@@ -103,5 +116,13 @@ impl Handler<Command> for GameServer {
             command::Command::ChangeTile(x, y, tile_id) => {}
             command::Command::MakeSound => {}
         }
+    }
+}
+
+impl GameServer {
+    fn tick(&mut self, context: &mut Context<Self>) {
+        let now = Instant::now();
+        println!("dt: {:?}", now.duration_since(self.last_frame));
+        self.last_frame = now;
     }
 }
