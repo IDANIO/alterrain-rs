@@ -1,15 +1,13 @@
 use actix::prelude::*;
-// use actix::utils::IntervalFunc;
 use rand::{self, rngs::ThreadRng, Rng};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    thread,
+    time::{Duration, Instant},
+};
 
-use crate::command;
-
-// This is from Alterrain's crate
-use alt_core::frame_limiter::FrameLimiter;
-use alt_core::timing::Stopwatch;
-use alt_core::world::World as GameWorld;
+use crate::{command, game::GameInstance};
+// use alt_core::world::World as GameWorld;
 
 /// Chat server sends this messages to session
 #[derive(Message)]
@@ -48,11 +46,7 @@ pub struct GameServer {
     sessions: HashMap<usize, Recipient<Message>>,
     /// An instance of an alterrain world
     /// TODO: I am not sure if this is the way to do it
-    world: GameWorld,
-    /// Time elapsed since the last frame.
-    // last_frame: Instant,
-    frame_limiter: FrameLimiter,
-    stopwatch: Stopwatch,
+    // world: GameWorld,
     /// thread local random number generator
     rng: ThreadRng,
 }
@@ -61,10 +55,7 @@ impl Default for GameServer {
     fn default() -> Self {
         GameServer {
             sessions: HashMap::new(),
-            world: GameWorld::new(32, 32),
-            // last_frame: Instant::now(),
-            frame_limiter: FrameLimiter::new(20),
-            stopwatch: Default::default(),
+            // world: GameWorld::new(32, 32),
             rng: rand::thread_rng(),
         }
     }
@@ -75,12 +66,12 @@ impl Actor for GameServer {
     type Context = Context<Self>;
 
     fn started(&mut self, context: &mut Context<Self>) {
-        self.run();
-        // // spawn an interval stream into our context
-        // // Say 20 frames per second for now
-        // IntervalFunc::new(Duration::from_secs_f64(1.0 / 20.0), Self::tick)
-        //     .finish()
-        //     .spawn(context)
+        let mut game = GameInstance::default();
+
+        // run the game instance on another thread.
+        thread::spawn(move || {
+            game.run();
+        });
     }
 }
 
@@ -123,28 +114,5 @@ impl Handler<Command> for GameServer {
             command::Command::ChangeTile(x, y, tile_id) => {}
             command::Command::MakeSound => {}
         }
-    }
-}
-
-impl GameServer {
-    /// Run the game loop
-    fn run(&mut self) {
-        // self.initialize();
-        loop {
-            self.advance_frame();
-            self.frame_limiter.wait();
-
-            let elapsed = self.stopwatch.elapsed();
-            println!("elapsed: {:?}", elapsed);
-
-            self.stopwatch.stop();
-            self.stopwatch.restart();
-        }
-        // self.shutdown();
-    }
-
-    /// Advances the game world by one tick.
-    fn advance_frame(&mut self) {
-        // println!("Update game logic...")
     }
 }

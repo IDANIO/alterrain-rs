@@ -7,6 +7,7 @@ use crate::command::Command;
 use std::time::{Duration, Instant};
 
 mod command;
+mod game;
 mod server;
 
 type WsResult = Result<ws::Message, ws::ProtocolError>;
@@ -163,6 +164,8 @@ async fn main() -> std::io::Result<()> {
 
     // Start chat server actor
     let server = server::GameServer::default().start();
+
+    println!("Started server: 127.0.0.1:8080");
 
     // Create Http server with websocket support
     HttpServer::new(move || {
