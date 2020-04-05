@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use actix::utils::IntervalFunc;
+// use actix::utils::IntervalFunc;
 use rand::{self, rngs::ThreadRng, Rng};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 use crate::command;
 
 // This is from Alterrain's crate
+use alt_core::frame_limiter::FrameLimiter;
+use alt_core::timing::Stopwatch;
 use alt_core::world::World as GameWorld;
 
 /// Chat server sends this messages to session
@@ -48,7 +50,9 @@ pub struct GameServer {
     /// TODO: I am not sure if this is the way to do it
     world: GameWorld,
     /// Time elapsed since the last frame.
-    last_frame: Instant,
+    // last_frame: Instant,
+    frame_limiter: FrameLimiter,
+    stopwatch: Stopwatch,
     /// thread local random number generator
     rng: ThreadRng,
 }
@@ -58,7 +62,9 @@ impl Default for GameServer {
         GameServer {
             sessions: HashMap::new(),
             world: GameWorld::new(32, 32),
-            last_frame: Instant::now(),
+            // last_frame: Instant::now(),
+            frame_limiter: FrameLimiter::new(20),
+            stopwatch: Default::default(),
             rng: rand::thread_rng(),
         }
     }
@@ -69,11 +75,12 @@ impl Actor for GameServer {
     type Context = Context<Self>;
 
     fn started(&mut self, context: &mut Context<Self>) {
-        // spawn an interval stream into our context
-        // Say 20 frames per second for now
-        IntervalFunc::new(Duration::from_secs_f64(1.0 / 20.0), Self::tick)
-            .finish()
-            .spawn(context)
+        self.run();
+        // // spawn an interval stream into our context
+        // // Say 20 frames per second for now
+        // IntervalFunc::new(Duration::from_secs_f64(1.0 / 20.0), Self::tick)
+        //     .finish()
+        //     .spawn(context)
     }
 }
 
@@ -120,12 +127,24 @@ impl Handler<Command> for GameServer {
 }
 
 impl GameServer {
-    /// This part should be equivalent to SetInterval in Node.js, and we use this to tick the game
-    /// at every loop
-    fn tick(&mut self, context: &mut Context<Self>) {
-        let now = Instant::now();
-        println!("dt: {:?}", now.duration_since(self.last_frame));
+    /// Run the game loop
+    fn run(&mut self) {
+        // self.initialize();
+        loop {
+            self.advance_frame();
+            self.frame_limiter.wait();
 
-        self.last_frame = now;
+            let elapsed = self.stopwatch.elapsed();
+            println!("elapsed: {:?}", elapsed);
+
+            self.stopwatch.stop();
+            self.stopwatch.restart();
+        }
+        // self.shutdown();
+    }
+
+    /// Advances the game world by one tick.
+    fn advance_frame(&mut self) {
+        // println!("Update game logic...")
     }
 }
