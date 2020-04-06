@@ -1,6 +1,7 @@
 //! I am thinking of making this an singleton and letting this running in another thread.
 
 use alt_core::{frame_limiter::FrameLimiter, timing::Stopwatch};
+use std::sync::{Arc, RwLock};
 
 pub struct GameState {
     /// The total number of tick called
@@ -13,28 +14,31 @@ impl Default for GameState {
     }
 }
 
-pub trait IntervalFuncBox {
-    fn call(&mut self);
-}
-
-impl<F: FnMut() + 'static> IntervalFuncBox for F {
-    fn call(&mut self) {
-        (*self)()
-    }
-}
+// pub trait IntervalFuncBox {
+//     fn call(&mut self);
+// }
+//
+// impl<F: FnMut() + 'static> IntervalFuncBox for F {
+//     fn call(&mut self) {
+//         (*self)()
+//     }
+// }
 
 pub struct GameRunner {
     frame_limiter: FrameLimiter,
     stopwatch: Stopwatch,
-    f: Box<dyn IntervalFuncBox>,
+    state: Arc<RwLock<GameState>>,
+    // f: Box<dyn IntervalFuncBox>,
 }
 
 impl GameRunner {
-    pub fn new<F: FnMut() + 'static>(f: F) -> Self {
+    pub fn new(state: Arc<RwLock<GameState>>) -> Self {
+        // pub fn new<F: FnMut() + 'static>(f: F) -> Self {
         GameRunner {
             frame_limiter: FrameLimiter::new(20),
             stopwatch: Stopwatch::new(),
-            f: Box::new(f),
+            state,
+            // f: Box::new(f),
         }
     }
 
@@ -47,7 +51,8 @@ impl GameRunner {
 
             let elapsed = self.stopwatch.elapsed();
             // println!("elapsed: {:?}", elapsed);
-            self.f.call();
+            self.state.write().unwrap().steps += 1;
+            // self.f.call();
 
             self.stopwatch.stop();
             self.stopwatch.restart();

@@ -72,9 +72,10 @@ impl Actor for GameServer {
     fn started(&mut self, _: &mut Context<Self>) {
         // Now create a separate thread to run the game logic
         // I don't know if this will be the final design, but for now we pass in game state.
-        // let thread_state = self.state.clone();
+        let thread_state = self.state.clone();
         thread::spawn(move || {
-            let mut runner = GameRunner::new(Self::tick);
+            // Self::tick
+            let mut runner = GameRunner::new(thread_state);
             runner.run();
         });
     }
@@ -91,6 +92,8 @@ impl Handler<Connect> for GameServer {
             id,
             self.sessions.len()
         );
+
+        println!("{}", self.state.read().unwrap().steps);
 
         id
     }
@@ -122,8 +125,8 @@ impl Handler<Command> for GameServer {
     }
 }
 
-impl GameServer {
-    fn tick() {
-        println!("ticking...");
-    }
-}
+// impl GameServer {
+//     fn tick() {
+//         println!("ticking...");
+//     }
+// }
