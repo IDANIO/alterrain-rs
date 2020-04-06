@@ -7,7 +7,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{command, game::GameInstance};
+use crate::game::GameState;
+use crate::{command, game::GameRunner};
+use std::sync::RwLock;
+
 // use alt_core::world::World as GameWorld;
 
 /// Chat server sends this messages to session
@@ -46,7 +49,8 @@ pub struct GameServer {
     /// store a list of connected sessions
     sessions: HashMap<usize, Recipient<Message>>,
     /// An instance of the actual game & its logic
-    instance: Arc<Mutex<GameInstance>>,
+    // instance: Arc<Mutex<GameInstance>>,
+    state: Arc<RwLock<GameState>>,
     /// thread local random number generator
     rng: ThreadRng,
 }
@@ -55,7 +59,7 @@ impl Default for GameServer {
     fn default() -> Self {
         GameServer {
             sessions: HashMap::new(),
-            instance: Arc::new(Mutex::new(GameInstance::default())),
+            state: Arc::new(RwLock::new(GameState::default())),
             rng: rand::thread_rng(),
         }
     }
@@ -67,9 +71,11 @@ impl Actor for GameServer {
 
     fn started(&mut self, _: &mut Context<Self>) {
         // Now create a separate thread to run the game logic
-        let instance = self.instance.clone();
+        // I don't know if this will be the final design, but for now we pass in game state.
+        // let thread_state = self.state.clone();
         thread::spawn(move || {
-            instance.lock().unwrap().run();
+            let mut runner = GameRunner::new(Self::tick);
+            runner.run();
         });
     }
 }
@@ -85,9 +91,6 @@ impl Handler<Connect> for GameServer {
             id,
             self.sessions.len()
         );
-
-        let n = self.instance.lock().unwrap().steps;
-        println!("Current game step is {}", n);
 
         id
     }
@@ -116,5 +119,11 @@ impl Handler<Command> for GameServer {
             command::Command::ChangeTile(x, y, tile_id) => {}
             command::Command::MakeSound => {}
         }
+    }
+}
+
+impl GameServer {
+    fn tick() {
+        println!("ticking...");
     }
 }
