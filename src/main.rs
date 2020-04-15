@@ -1,19 +1,31 @@
 use actix::*;
 use actix_files as fs;
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 
+use crate::command::Command;
+use std::time::{Duration, Instant};
+
+mod command;
+mod game;
 mod server;
 
-/// Entry point for our route
+type WsResult = Result<ws::Message, ws::ProtocolError>;
+
+/// How often heartbeat pings are sent
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
+/// How long before lack of client response causes a timeout
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
+
 async fn game_route(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::GameServer>>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, actix_web::Error> {
     ws::start(
-        WsGameSession {
+        WsSession {
             id: 0,
+            hb: Instant::now(),
             addr: srv.get_ref().clone(),
         },
         &req,
@@ -21,24 +33,32 @@ async fn game_route(
     )
 }
 
-/// Here we define a websocket game session, each session should have its unique session id, as
-/// well as a pointer to the game server actor. Other information TBD
-struct WsGameSession {
+/// Define http actor, representing each single websocket session. It should contains information
+/// of the unique id, a time stamp of last active time, and an pointer to the game server actor.
+struct WsSession {
     /// unique session id
     id: usize,
-    // heart beat?
-    // player joined room?
-    // player name?
-    /// the Game server
+    /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
+    /// otherwise we drop connection.
+    hb: Instant,
+    /// Reference to the GameServer
     addr: Addr<server::GameServer>,
 }
 
-impl Actor for WsGameSession {
+impl Actor for WsSession {
     type Context = ws::WebsocketContext<Self>;
 
     /// Method is called on actor start.
-    /// We register ws session with ChatServer
+    /// We register ws session with GameServer
     fn started(&mut self, ctx: &mut Self::Context) {
+        // we'll start heartbeat process on session start.
+        self.hb(ctx);
+
+        // register self in chat server. `AsyncContext::wait` register
+        // future within context, but context waits until this future resolves
+        // before processing any other events.
+        // HttpContext::state() is instance of WsChatSessionState, state is shared
+        // across all routes within application
         let addr = ctx.address();
         self.addr
             .send(server::Connect {
@@ -57,22 +77,24 @@ impl Actor for WsGameSession {
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        // notify game server
+        // notify chat server
         self.addr.do_send(server::Disconnect { id: self.id });
         Running::Stop
     }
 }
 
-impl Handler<server::Message> for WsGameSession {
+/// Handle messages from game server, here we should send JSON back to the client.
+/// For alterrain, the JSON should describe the state of the world
+impl Handler<server::Message> for WsSession {
     type Result = ();
 
-    fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) -> Self::Result {
         ctx.text(msg.0);
     }
 }
 
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsGameSession {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+impl StreamHandler<WsResult> for WsSession {
+    fn handle(&mut self, msg: WsResult, ctx: &mut Self::Context) {
         let msg = match msg {
             Err(_) => {
                 ctx.stop();
@@ -80,21 +102,30 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsGameSession {
             }
             Ok(msg) => msg,
         };
+        println!("WEBSOCKET MESSAGE (id: {:?}): {:?}", self.id, msg);
 
-        println!("WEBSOCKET MESSAGE: {:?}", msg);
         match msg {
-            ws::Message::Text(text) => {
-                let _ = text.trim();
-            }
-            ws::Message::Binary(_) => println!("Unexpected binary"),
-            ws::Message::Continuation(_) => {
-                ctx.stop();
-            }
             ws::Message::Ping(msg) => {
+                self.hb = Instant::now();
                 ctx.pong(&msg);
             }
-            ws::Message::Pong(_) => {}
-            ws::Message::Close(_) => {
+            ws::Message::Pong(_) => {
+                self.hb = Instant::now();
+            }
+            ws::Message::Text(raw) => {
+                // Here we should do the JSON command parsing
+                match command::deserialize(raw.as_str()) {
+                    Ok(cmd) => {
+                        // TODO: maybe return some result and wait instead of doing unconditionally?
+                        // For example, if it is a invalid move then return a response that say
+                        // invalid move, so you can play error sound on the client.
+                        self.addr.do_send(server::Command { id: self.id, cmd });
+                    }
+                    _ => println!("Unexpected JSON message"),
+                }
+            }
+            ws::Message::Binary(_) => println!("Unexpected binary"),
+            ws::Message::Close(_) | ws::Message::Continuation(_) => {
                 ctx.stop();
             }
             ws::Message::Nop => (),
@@ -102,15 +133,41 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsGameSession {
     }
 }
 
+impl WsSession {
+    /// helper method that sends ping to client every second.
+    /// also this method checks heartbeats from client.
+    fn hb(&self, ctx: &mut ws::WebsocketContext<Self>) {
+        ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
+            if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
+                // heartbeat timed out
+                println!("Websocket Client heartbeat failed, disconnecting!");
+
+                // notify chat server
+                act.addr.do_send(server::Disconnect { id: act.id });
+
+                // stop actor
+                ctx.stop();
+
+                // don't try to send a ping
+                return;
+            }
+
+            ctx.ping(b"");
+        });
+    }
+}
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
-    // Start game server actor
+    // Start chat server actor
     let server = server::GameServer::default().start();
 
-    println!("Started http server: 127.0.0.1:8080");
+    println!("Started server: 127.0.0.1:8080");
 
+    // Create Http server with websocket support
     HttpServer::new(move || {
         App::new()
             .data(server.clone())

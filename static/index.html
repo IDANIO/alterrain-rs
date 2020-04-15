@@ -53,6 +53,18 @@
                 }
             }
 
+            $('#send-json').click(function () {
+                var msg = {
+                    ty: "message",
+                    date: Date.now()
+                };
+
+                var json = JSON.stringify(msg);
+
+                console.log(json);
+                conn.send(json);
+            });
+
             $('#connect').click(function () {
                 if (conn == null) {
                     connect();
@@ -80,6 +92,7 @@
 </head>
 <body>
 <h3>Chat!</h3>
+    <button id="send-json">Send Json</button>
 <div>
     <button id="connect">Connect</button>&nbsp;|&nbsp;Status:
     <span id="status">disconnected</span>

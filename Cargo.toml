@@ -1,3 +1,8 @@
+[workspace]
+members = [
+    "alt-core",
+]
+
 [package]
 name = "alterrain-rs"
 version = "0.1.0"
@@ -7,11 +12,21 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# Alterrain crates
+alt-core = {path = "./alt-core"}
+
+# Actix Web Framework
 actix-rt = "1.0"
 actix = "0.9.0"
 actix-web = "2.0"
 actix-web-actors = "2.0.0"
 actix-files = "0.2.1"
 
+tokio = "0.2.13"
+futures = "0.3.4"
+
+# Others
 rand = "0.7.3"
 env_logger = "0.7.1"
+serde = "1.0.105"
+serde_json = "1.0.48"
