@@ -15,6 +15,9 @@ edition = "2018"
 # Alterrain crates
 alt-core = {path = "./alt-core"}
 
+hyper = "0.13.5"
+tokio = { version = "0.2", features = ["full"] }
+
 # Others
 rand = "0.7.3"
 env_logger = "0.7.1"
